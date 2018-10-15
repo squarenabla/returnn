@@ -2847,6 +2847,7 @@ class ConvLayer(_ConcatInputLayer):
     :param int input_expand_dims: number of dynamic dims to add to the input
     :param bool input_add_feature_dim: will add a dim at the end and use input-feature-dim == 1,
       and use the original input feature-dim as a spatial dim.
+    :param bool auto_use_channel_first: convert the input to NCHW or not
     :param None|int input_split_feature_dim: if set, like input_add_feature_dim it will add a new feature dim
       which is of value input_split_feature_dim, and the original input feature dim
       will be divided by input_split_feature_dim, thus it must be a multiple of that value.
@@ -2957,7 +2958,8 @@ class ConvLayer(_ConcatInputLayer):
   @classmethod
   def _get_out_type_from_opts(cls, n_out, filter_size, padding, strides=1, dilation_rate=1, sources=(),
                               input_expand_dims=0, input_add_feature_dim=False, input_split_feature_dim=None,
-                              auto_use_channel_first=False, **kwargs):
+                              auto_use_channel_first=False,
+                              **kwargs):
     data = get_concat_sources_data_template(sources)
     # The output format is the same as the input.
     if data.feature_dim_axis == 1:
@@ -2986,7 +2988,7 @@ class ConvLayer(_ConcatInputLayer):
             in_dim=data.shape[i + index_shift],
             filter_size=filter_size[i], stride=strides[i], dilation_rate=dilation_rate[i], padding=padding)
     feature_dim_axis = data.feature_dim_axis
-    # Swap the dims if the input dim order doesn't fit the flag auto_use_channel_first
+    # Swap the dims if the input dim order doesn't fit the flag auto_use_channel_first.
     if TFUtil.is_gpu_available() and auto_use_channel_first and data.feature_dim_axis != 1:
       feature_dim_axis = 1
       shape = shape[-1:] + shape[:-1]
