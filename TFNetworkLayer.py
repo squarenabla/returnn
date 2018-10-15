@@ -3015,7 +3015,8 @@ class PoolLayer(_ConcatInputLayer):
   recurrent = True  # we should not shuffle in the time-dimension
 
   def __init__(self, mode, pool_size, padding="VALID", dilation_rate=1, strides=None,
-               auto_use_channel_first=False, **kwargs):
+               auto_use_channel_first=False,
+               **kwargs):
     """
     :param str mode: "max" or "avg"
     :param tuple[int] pool_size: shape of the window of each reduce
@@ -3023,6 +3024,7 @@ class PoolLayer(_ConcatInputLayer):
     :param tuple[int]|int dilation_rate:
     :param tuple[int]|int|None strides: in contrast to tf.nn.pool, the default (if it is None) will be set to pool_size
     :param bool auto_use_channel_first: if set, will transform input to NCHW format
+    :param bool auto_use_channel_first: convert the input to NCHW or not
     """
     assert "n_out" not in kwargs
     assert "out_type" not in kwargs
@@ -3075,10 +3077,11 @@ class PoolLayer(_ConcatInputLayer):
 
   @classmethod
   def get_out_data_from_opts(cls, name, pool_size, strides=None, dilation_rate=1, sources=(), padding="VALID",
-                             auto_use_channel_first=False, **kwargs):
+                             auto_use_channel_first=False,
+                             **kwargs):
     # y shape is [batch] + spatial_dims + [n_out].
     data = get_concat_sources_data_template(sources, name="%s_output" % name)
-    #The output format is the same as the input.
+    # The output format is the same as the input.
     if data.feature_dim_axis == 1:
       shape = [data.dim] + [None] * len(pool_size)
     else:
@@ -3101,12 +3104,12 @@ class PoolLayer(_ConcatInputLayer):
     padding = padding.upper()
     index_shift = data.time_dim_axis_excluding_batch
     for i in range(len(pool_size)):
-      if data.shape[i+index_shift] is not None:
-        shape[i+index_shift] = ConvLayer.calc_out_dim(
-          in_dim=data.shape[i+index_shift],
+      if data.shape[i + index_shift] is not None:
+        shape[i + index_shift] = ConvLayer.calc_out_dim(
+          in_dim=data.shape[i + index_shift],
           filter_size=pool_size[i], stride=strides[i], dilation_rate=dilation_rate[i], padding=padding)
     feature_dim_axis = data.feature_dim_axis
-    #Swap the dims if the input dim order doesn't fit the flag auto_use_channel_first
+    # Swap the dims if the input dim order doesn't fit the flag auto_use_channel_first.
     if TFUtil.is_gpu_available() and auto_use_channel_first and data.feature_dim_axis != 1:
       feature_dim_axis = 1
       shape = shape[-1:] + shape[:-1]
