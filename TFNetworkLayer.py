@@ -2961,11 +2961,10 @@ class ConvLayer(_ConcatInputLayer):
                               auto_use_channel_first=False,
                               **kwargs):
     data = get_concat_sources_data_template(sources)
-    # The output format is the same as the input.
-    if data.feature_dim_axis == 1:
-      shape = [n_out] + [None] * len(filter_size)
-    else:
-      shape = [None] * len(filter_size) + [n_out]
+    auto_use_channel_first = auto_use_channel_first or data.is_batch_feature_major
+    # The output format is the same as the input for now.
+    shape = [None] * len(filter_size) + [n_out]
+
     if isinstance(strides, int):
       strides = [strides] * len(filter_size)
     else:
@@ -2981,15 +2980,16 @@ class ConvLayer(_ConcatInputLayer):
     padding = padding.upper()
     if input_expand_dims == 0 and not input_add_feature_dim and not input_split_feature_dim:
       # Maybe we have a chance to correctly define the output shapes.
-      index_shift = data.time_dim_axis_excluding_batch
+      if data.is_batch_feature_major:
+        data = data.copy_with_feature_dim_axis(-1)
       for i in range(len(filter_size)):
-        if data.shape[i + index_shift] is not None:
-          shape[i + index_shift] = cls.calc_out_dim(
-            in_dim=data.shape[i + index_shift],
+        if data.shape[i] is not None:
+          shape[i] = cls.calc_out_dim(
+            in_dim=data.shape[i],
             filter_size=filter_size[i], stride=strides[i], dilation_rate=dilation_rate[i], padding=padding)
-    feature_dim_axis = data.feature_dim_axis
+    feature_dim_axis = NotSpecified
     # Swap the dims if the input dim order doesn't fit the flag auto_use_channel_first.
-    if TFUtil.is_gpu_available() and auto_use_channel_first and data.feature_dim_axis != 1:
+    if TFUtil.is_gpu_available() and auto_use_channel_first:
       feature_dim_axis = 1
       shape = shape[-1:] + shape[:-1]
     return {
