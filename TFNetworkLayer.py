@@ -3081,11 +3081,9 @@ class PoolLayer(_ConcatInputLayer):
                              **kwargs):
     # y shape is [batch] + spatial_dims + [n_out].
     data = get_concat_sources_data_template(sources, name="%s_output" % name)
-    # The output format is the same as the input.
-    if data.feature_dim_axis == 1:
-      shape = [data.dim] + [None] * len(pool_size)
-    else:
-      shape = [None] * len(pool_size) + [data.dim]
+    auto_use_channel_first = auto_use_channel_first or data.is_batch_feature_major
+    # The output format is the same as the input for now.
+    shape = [None] * len(pool_size) + [data.dim]
     if strides is None:
       strides = pool_size
     if isinstance(strides, int):
@@ -3102,15 +3100,16 @@ class PoolLayer(_ConcatInputLayer):
       # Identity function. Just copy and don't do anything.
       return data
     padding = padding.upper()
-    index_shift = data.time_dim_axis_excluding_batch
+    if data.is_batch_feature_major:
+      data = data.copy_with_feature_dim_axis(-1)
     for i in range(len(pool_size)):
-      if data.shape[i + index_shift] is not None:
-        shape[i + index_shift] = ConvLayer.calc_out_dim(
-          in_dim=data.shape[i + index_shift],
+      if data.shape[i] is not None:
+        shape[i] = ConvLayer.calc_out_dim(
+          in_dim=data.shape[i],
           filter_size=pool_size[i], stride=strides[i], dilation_rate=dilation_rate[i], padding=padding)
-    feature_dim_axis = data.feature_dim_axis
+    feature_dim_axis = NotSpecified
     # Swap the dims if the input dim order doesn't fit the flag auto_use_channel_first.
-    if TFUtil.is_gpu_available() and auto_use_channel_first and data.feature_dim_axis != 1:
+    if TFUtil.is_gpu_available() and auto_use_channel_first:
       feature_dim_axis = 1
       shape = shape[-1:] + shape[:-1]
     return Data(
