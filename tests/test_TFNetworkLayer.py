@@ -685,25 +685,27 @@ def test_conv_layer_NCHW():
   with make_scope() as session:
     import numpy as np
     net = TFNetwork(extern_data=ExternData())
-    src_nhwc = InternalLayer(name="src_nhwc", network=net, out_type={"dim": 16,
-                                                                     "shape": (None, 16, 16),
-                                                                     "batch_dim_axis": 0,
-                                                                     "time_dim_axis": 1,
-                                                                     "feature_dim_axis": 3,
-                                                                     "sparse": False
-                                                                     })
-    src_nhwc.output.placeholder = tf.constant(np.random.rand(10, 10, 16, 16), dtype=tf.float32)
-    src_nhwc.output.size_placeholder = {0: tf.constant(np.full(shape=(10,), fill_value=10), dtype=tf.int32)}
+    with tf.variable_scope("src_nhwc"):
+      src_nhwc = InternalLayer(name="src_nhwc", network=net, out_type={"dim": 16,
+                                                                       "shape": (None, 16, 16),
+                                                                       "batch_dim_axis": 0,
+                                                                       "time_dim_axis": 1,
+                                                                       "feature_dim_axis": 3,
+                                                                       "sparse": False
+                                                                       })
+      src_nhwc.output.placeholder = tf.constant(np.random.rand(10, 10, 16, 16), dtype=tf.float32)
+      src_nhwc.output.size_placeholder = {0: tf.constant(np.full(shape=(10,), fill_value=10), dtype=tf.int32)}
 
-    src_nchw = InternalLayer(name="src_nchw", network=net, out_type={"dim": 16,
-                                                                     "shape": (16, None, 16),
-                                                                     "batch_dim_axis": 0,
-                                                                     "time_dim_axis": 2,
-                                                                     "feature_dim_axis": 1,
-                                                                     "sparse": False
-                                                                     })
-    src_nchw.output.placeholder = tf.constant(np.random.rand(10, 16, 10, 16), dtype=tf.float32)
-    src_nchw.output.size_placeholder = {1: tf.constant(np.full(shape=(10,), fill_value=10), dtype=tf.int32)}
+    with tf.variable_scope("src_nchw"):
+      src_nchw = InternalLayer(name="src_nchw", network=net, out_type={"dim": 16,
+                                                                       "shape": (16, None, 16),
+                                                                       "batch_dim_axis": 0,
+                                                                       "time_dim_axis": 2,
+                                                                       "feature_dim_axis": 1,
+                                                                       "sparse": False
+                                                                       })
+      src_nchw.output.placeholder = tf.constant(np.random.rand(10, 16, 10, 16), dtype=tf.float32)
+      src_nchw.output.size_placeholder = {1: tf.constant(np.full(shape=(10,), fill_value=10), dtype=tf.int32)}
 
     filters = 64
     filter_size = (5, 5)
@@ -711,40 +713,43 @@ def test_conv_layer_NCHW():
     padding = "VALID"
     activation = None
 
-    conv_nhwc_from_nhwc = ConvLayer(
-      name="conv_nhwc_from_nhwc", network=net, n_out=filters, filter_size=filter_size,
-      padding=padding, strides=strides, auto_use_channel_first=False, sources=[src_nhwc],
-      output=ConvLayer.get_out_data_from_opts(name="conv_nhwc_from_nhwc", n_out=filters,
-                                              filter_size=filter_size, padding=padding,
-                                              auto_use_channel_first=False,
-                                              network=net, sources=[src_nhwc]))
+    with tf.variable_scope("conv_nhwc_from_nhwc"):
+      conv_nhwc_from_nhwc = ConvLayer(
+        name="conv_nhwc_from_nhwc", network=net, n_out=filters, filter_size=filter_size,
+        padding=padding, strides=strides, auto_use_channel_first=False, sources=[src_nhwc],
+        output=ConvLayer.get_out_data_from_opts(name="conv_nhwc_from_nhwc", n_out=filters,
+                                                filter_size=filter_size, padding=padding,
+                                                auto_use_channel_first=False,
+                                                network=net, sources=[src_nhwc]))
 
-    conv_nchw_from_nhwc = ConvLayer(
-      name="conv_nchw_from_nhwc", network=net, n_out=filters, filter_size=filter_size,
-      padding=padding, strides=strides, auto_use_channel_first=True, sources=[src_nhwc],
-      output=ConvLayer.get_out_data_from_opts(name="conv_nchw_from_nhwc", n_out=filters,
-                                              filter_size=filter_size, padding=padding,
-                                              auto_use_channel_first=True,
-                                              network=net, sources=[src_nhwc]))
+    with tf.variable_scope("conv_nchw_from_nhwc"):
+      conv_nchw_from_nhwc = ConvLayer(
+        name="conv_nchw_from_nhwc", network=net, n_out=filters, filter_size=filter_size,
+        padding=padding, strides=strides, auto_use_channel_first=True, sources=[src_nhwc],
+        output=ConvLayer.get_out_data_from_opts(name="conv_nchw_from_nhwc", n_out=filters,
+                                                filter_size=filter_size, padding=padding,
+                                                auto_use_channel_first=True,
+                                                network=net, sources=[src_nhwc]))
+    with tf.variable_scope("conv_nchw_from_nchw"):
+      conv_nchw_from_nchw = ConvLayer(
+        name="conv_nchw_from_nchw", network=net, n_out=filters, filter_size=filter_size,
+        padding=padding, strides=strides, auto_use_channel_first=True, sources=[src_nchw],
+        output=ConvLayer.get_out_data_from_opts(name="conv_nchw_from_nchw", n_out=filters,
+                                                filter_size=filter_size, padding=padding,
+                                                auto_use_channel_first=True,
+                                                network=net, sources=[src_nchw]))
 
-    conv_nchw_from_nchw = ConvLayer(
-      name="conv_nchw_from_nchw", network=net, n_out=filters, filter_size=filter_size,
-      padding=padding, strides=strides, auto_use_channel_first=True, sources=[src_nchw],
-      output=ConvLayer.get_out_data_from_opts(name="conv_nchw_from_nchw", n_out=filters,
-                                              filter_size=filter_size, padding=padding,
-                                              auto_use_channel_first=True,
-                                              network=net, sources=[src_nchw]))
-
+    tf.global_variables_initializer().run()
     out, seq_lens = session.run([conv_nhwc_from_nhwc.output.placeholder,
                                  conv_nhwc_from_nhwc.output.size_placeholder[0]])
     print(out)
     print(seq_lens)
     out, seq_lens = session.run([conv_nchw_from_nhwc.output.placeholder,
-                                 conv_nchw_from_nhwc.output.size_placeholder[0]])
+                                 conv_nchw_from_nhwc.output.size_placeholder[1]])
     print(out)
     print(seq_lens)
     out, seq_lens = session.run([conv_nchw_from_nchw.output.placeholder,
-                                 conv_nchw_from_nchw.output.size_placeholder[0]])
+                                 conv_nchw_from_nchw.output.size_placeholder[1]])
     print(out)
     print(seq_lens)
     # assert_equal(v.shape, (1,))  # (batch,), where batch==1 for broadcasting
