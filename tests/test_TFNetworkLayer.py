@@ -797,7 +797,7 @@ def test_pool_layer_NCHW():
     padding = "VALID"
 
     with tf.variable_scope("pool_nhwc_from_nhwc"):
-      conv_nhwc_from_nhwc = PoolLayer(
+      pool_nhwc_from_nhwc = PoolLayer(
         name="pool_nhwc_from_nhwc", network=net, mode="max", pool_size=pool_size,
         padding=padding, strides=strides, auto_use_channel_first=False, sources=[src_nhwc],
         output=PoolLayer.get_out_data_from_opts(name="pool_nhwc_from_nhwc",
@@ -805,15 +805,15 @@ def test_pool_layer_NCHW():
                                                 auto_use_channel_first=False,
                                                 network=net, sources=[src_nhwc]))
     with tf.variable_scope("pool_nchw_from_nhwc"):
-      conv_nchw_from_nhwc = PoolLayer(
+      pool_nchw_from_nhwc = PoolLayer(
         name="pool_nchw_from_nhwc", network=net, mode="max", pool_size=pool_size,
         padding=padding, strides=strides, auto_use_channel_first=True, sources=[src_nhwc],
-        output=PoolLayer.get_out_data_from_opts(name="conv_nchw_from_nhwc",
+        output=PoolLayer.get_out_data_from_opts(name="pool_nchw_from_nhwc",
                                                 pool_size=pool_size, padding=padding,
                                                 auto_use_channel_first=True,
                                                 network=net, sources=[src_nhwc]))
     with tf.variable_scope("pool_nchw_from_nchw"):
-      conv_nchw_from_nchw = PoolLayer(
+      pool_nchw_from_nchw = PoolLayer(
         name="pool_nchw_from_nchw", network=net, mode="max", pool_size=pool_size,
         padding=padding, strides=strides, auto_use_channel_first=True, sources=[src_nchw],
         output=PoolLayer.get_out_data_from_opts(name="pool_nchw_from_nchw",
@@ -821,8 +821,8 @@ def test_pool_layer_NCHW():
                                                 auto_use_channel_first=True,
                                                 network=net, sources=[src_nchw]))
     tf.global_variables_initializer().run()
-    out, seq_lens = session.run([conv_nhwc_from_nhwc.output.placeholder,
-                                 conv_nhwc_from_nhwc.output.size_placeholder[0]],
+    out, seq_lens = session.run([pool_nhwc_from_nhwc.output.placeholder,
+                                 pool_nhwc_from_nhwc.output.size_placeholder[0]],
                                 feed_dict={src_nhwc.output.placeholder: np.random.rand(10, 11, 16, 16),
                                            src_nhwc.output.size_placeholder[0]: np.full(shape=(10,), fill_value=11)}
                                 )
@@ -830,8 +830,8 @@ def test_pool_layer_NCHW():
     assert_equal(out.shape, (10, 7, 6, 16))
     print(seq_lens)
     time_dim_axis = 1 if TFUtil.is_gpu_available() else 0
-    out, seq_lens = session.run([conv_nchw_from_nhwc.output.placeholder,
-                                 conv_nchw_from_nhwc.output.size_placeholder[time_dim_axis]],
+    out, seq_lens = session.run([pool_nchw_from_nhwc.output.placeholder,
+                                 pool_nchw_from_nhwc.output.size_placeholder[time_dim_axis]],
                                 feed_dict={src_nhwc.output.placeholder: np.random.rand(10, 11, 16, 16),
                                            src_nhwc.output.size_placeholder[0]: np.full(shape=(10,), fill_value=11)
                                 })
@@ -842,8 +842,8 @@ def test_pool_layer_NCHW():
       assert_equal(out.shape, (10, 7, 6, 16))
     print(seq_lens)
     if TFUtil.is_gpu_available():
-      out, seq_lens = session.run([conv_nchw_from_nchw.output.placeholder,
-                                   conv_nchw_from_nchw.output.size_placeholder[1]],
+      out, seq_lens = session.run([pool_nchw_from_nchw.output.placeholder,
+                                   pool_nchw_from_nchw.output.size_placeholder[1]],
                                   feed_dict={src_nchw.output.placeholder: np.random.rand(10, 16, 11, 16),
                                              src_nchw.output.size_placeholder[1]: np.full(shape=(10,), fill_value=11)
                                   })
