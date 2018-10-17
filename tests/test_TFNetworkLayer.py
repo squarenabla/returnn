@@ -799,26 +799,34 @@ def test_pool_layer_NCHW():
     with tf.variable_scope("pool_nhwc_from_nhwc"):
       pool_nhwc_from_nhwc = PoolLayer(
         name="pool_nhwc_from_nhwc", network=net, mode="max", pool_size=pool_size,
-        padding=padding, strides=strides, auto_use_channel_first=False, sources=[src_nhwc],
+        padding=padding, strides=strides, use_channel_first=False, sources=[src_nhwc],
         output=PoolLayer.get_out_data_from_opts(name="pool_nhwc_from_nhwc",
                                                 pool_size=pool_size, padding=padding,
-                                                auto_use_channel_first=False,
+                                                use_channel_first=False,
                                                 network=net, sources=[src_nhwc]))
     with tf.variable_scope("pool_nchw_from_nhwc"):
       pool_nchw_from_nhwc = PoolLayer(
         name="pool_nchw_from_nhwc", network=net, mode="max", pool_size=pool_size,
-        padding=padding, strides=strides, auto_use_channel_first=True, sources=[src_nhwc],
+        padding=padding, strides=strides, use_channel_first=True, sources=[src_nhwc],
         output=PoolLayer.get_out_data_from_opts(name="pool_nchw_from_nhwc",
                                                 pool_size=pool_size, padding=padding,
-                                                auto_use_channel_first=True,
+                                                use_channel_first=True,
                                                 network=net, sources=[src_nhwc]))
     with tf.variable_scope("pool_nchw_from_nchw"):
       pool_nchw_from_nchw = PoolLayer(
         name="pool_nchw_from_nchw", network=net, mode="max", pool_size=pool_size,
-        padding=padding, strides=strides, auto_use_channel_first=True, sources=[src_nchw],
+        padding=padding, strides=strides, use_channel_first=True, sources=[src_nchw],
         output=PoolLayer.get_out_data_from_opts(name="pool_nchw_from_nchw",
                                                 pool_size=pool_size, padding=padding,
-                                                auto_use_channel_first=True,
+                                                use_channel_first=True,
+                                                network=net, sources=[src_nchw]))
+    with tf.variable_scope("pool_nhwc_from_nchw"):
+      pool_nhwc_from_nchw = PoolLayer(
+        name="pool_nhwc_from_nchw", network=net, mode="max", pool_size=pool_size,
+        padding=padding, strides=strides, use_channel_first=False, sources=[src_nchw],
+        output=PoolLayer.get_out_data_from_opts(name="pool_nhwc_from_nchw",
+                                                pool_size=pool_size, padding=padding,
+                                                use_channel_first=False,
                                                 network=net, sources=[src_nchw]))
     tf.global_variables_initializer().run()
     out, seq_lens = session.run([pool_nhwc_from_nhwc.output.placeholder,
@@ -850,6 +858,14 @@ def test_pool_layer_NCHW():
       print(out.shape)
       assert_equal(out.shape, (10, 16, 7, 6))
       print(seq_lens)
+    out, seq_lens = session.run([pool_nhwc_from_nchw.output.placeholder,
+                                 pool_nhwc_from_nchw.output.size_placeholder[0]],
+                                feed_dict={src_nchw.output.placeholder: np.random.rand(10, 16, 11, 16),
+                                           src_nchw.output.size_placeholder[1]: np.full(shape=(10,), fill_value=11)}
+                                )
+    print(out.shape)
+    assert_equal(out.shape, (10, 7, 6, 16))
+    print(seq_lens)
 
 
 def test_ResizeLayer_fill_value():
