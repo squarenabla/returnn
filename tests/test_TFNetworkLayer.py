@@ -695,7 +695,6 @@ def test_conv_layer_NCHW():
                                                                        })
       src_nhwc.output.placeholder = tf.placeholder(shape=(None, None, 16, 16), dtype=tf.float32)
       src_nhwc.output.size_placeholder = {0: tf.placeholder(shape=(None,), dtype=tf.int32)}
-
     with tf.variable_scope("src_nchw"):
       src_nchw = InternalLayer(name="src_nchw", network=net, out_type={"dim": 16,
                                                                        "shape": (16, None, 16),
@@ -711,7 +710,6 @@ def test_conv_layer_NCHW():
     filter_size = (5, 5)
     strides = (1, 2)
     padding = "VALID"
-    activation = None
 
     with tf.variable_scope("conv_nhwc_from_nhwc"):
       conv_nhwc_from_nhwc = ConvLayer(
@@ -737,7 +735,6 @@ def test_conv_layer_NCHW():
                                                 filter_size=filter_size, padding=padding,
                                                 auto_use_channel_first=True,
                                                 network=net, sources=[src_nchw]))
-
     tf.global_variables_initializer().run()
     out, seq_lens = session.run([conv_nhwc_from_nhwc.output.placeholder,
                                  conv_nhwc_from_nhwc.output.size_placeholder[0]],
@@ -747,23 +744,27 @@ def test_conv_layer_NCHW():
     print(out.shape)
     assert_equal(out.shape, (10, 6, 6, 64))
     print(seq_lens)
-
     time_dim_axis = 1 if TFUtil.is_gpu_available() else 0
     out, seq_lens = session.run([conv_nchw_from_nhwc.output.placeholder,
-                                 conv_nchw_from_nhwc.output.size_placeholder[1]],
+                                 conv_nchw_from_nhwc.output.size_placeholder[time_dim_axis]],
                                 feed_dict={src_nhwc.output.placeholder: np.random.rand(10, 10, 16, 16),
                                            src_nhwc.output.size_placeholder[0]: np.full(shape=(10,), fill_value=10)
                                 })
     print(out.shape)
-    assert_equal(out.shape, (10, 64, 6, 6))
+    if time_dim_axis == 1:
+      assert_equal(out.shape, (10, 64, 6, 6))
+    else:
+      assert_equal(out.shape, (10, 6, 6, 64))
     print(seq_lens)
-    out, seq_lens = session.run([conv_nchw_from_nchw.output.placeholder,
-                                 conv_nchw_from_nchw.output.size_placeholder[1]],
-                                feed_dict={src_nchw.output.placeholder: np.random.rand(10, 16, 10, 16),
-                                           src_nchw.output.size_placeholder[1]: np.full(shape=(10,), fill_value=10)
-                                })
-    print(out.shape)
-    print(seq_lens)
+    if TFUtil.is_gpu_available():
+      out, seq_lens = session.run([conv_nchw_from_nchw.output.placeholder,
+                                   conv_nchw_from_nchw.output.size_placeholder[1]],
+                                  feed_dict={src_nchw.output.placeholder: np.random.rand(10, 16, 10, 16),
+                                             src_nchw.output.size_placeholder[1]: np.full(shape=(10,), fill_value=10)
+                                  })
+      print(out.shape)
+      assert_equal(out.shape, (10, 64, 6, 6))
+      print(seq_lens)
 
 
 def test_ResizeLayer_fill_value():
