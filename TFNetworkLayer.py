@@ -2961,7 +2961,6 @@ class ConvLayer(_ConcatInputLayer):
                               auto_use_channel_first=False,
                               **kwargs):
     data = get_concat_sources_data_template(sources)
-    auto_use_channel_first = auto_use_channel_first or data.is_batch_feature_major
     # The output format is the same as the input. We maybe change to channel-first below.
     shape = [None] * len(filter_size) + [n_out]
     if isinstance(strides, int):
@@ -2987,7 +2986,7 @@ class ConvLayer(_ConcatInputLayer):
             filter_size=filter_size[i], stride=strides[i], dilation_rate=dilation_rate[i], padding=padding)
     feature_dim_axis = NotSpecified
     # Swap the dims if the input dim order doesn't fit the flag auto_use_channel_first.
-    if (TFUtil.is_gpu_available() and auto_use_channel_first) or data.is_batch_feature_major:
+    if TFUtil.is_gpu_available() and auto_use_channel_first:
       feature_dim_axis = 1
       shape = shape[-1:] + shape[:-1]
     return {
@@ -3013,7 +3012,7 @@ class PoolLayer(_ConcatInputLayer):
   recurrent = True  # we should not shuffle in the time-dimension
 
   def __init__(self, mode, pool_size, padding="VALID", dilation_rate=1, strides=None,
-               auto_use_channel_first=False,
+               use_channel_first=False,
                **kwargs):
     """
     :param str mode: "max" or "avg"
@@ -3021,7 +3020,7 @@ class PoolLayer(_ConcatInputLayer):
     :param str padding: "valid" or "same"
     :param tuple[int]|int dilation_rate:
     :param tuple[int]|int|None strides: in contrast to tf.nn.pool, the default (if it is None) will be set to pool_size
-    :param bool auto_use_channel_first: if set, will transform input to NCHW format
+    :param bool use_channel_first: if set, will transform input to NCHW format
     """
     assert "n_out" not in kwargs
     assert "out_type" not in kwargs
@@ -3074,7 +3073,7 @@ class PoolLayer(_ConcatInputLayer):
 
   @classmethod
   def get_out_data_from_opts(cls, name, pool_size, strides=None, dilation_rate=1, sources=(), padding="VALID",
-                             auto_use_channel_first=False,
+                             use_channel_first=False,
                              **kwargs):
     # y shape is [batch] + spatial_dims + [n_out].
     data = get_concat_sources_data_template(sources, name="%s_output" % name)
@@ -3102,8 +3101,8 @@ class PoolLayer(_ConcatInputLayer):
           in_dim=data.shape[i + index_shift],
           filter_size=pool_size[i], stride=strides[i], dilation_rate=dilation_rate[i], padding=padding)
     feature_dim_axis = NotSpecified
-    # Swap the dims if the input dim order doesn't fit the flag auto_use_channel_first.
-    if (TFUtil.is_gpu_available() and auto_use_channel_first) or data.is_batch_feature_major:
+    # Swap the dims if use_channel_first is set.
+    if TFUtil.is_gpu_available() and use_channel_first:
       feature_dim_axis = 1
       shape = shape[-1:] + shape[:-1]
     return Data(
