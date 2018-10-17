@@ -3047,13 +3047,13 @@ class PoolLayer(_ConcatInputLayer):
     # the feature-dim is the very last ("NHWC" format) or right after batch-dim ("NCHW"),
     # and all other dims are where we convolve over.
     if self.output.is_batch_feature_major:
-      x = self.input_data.copy_as_batch_feature_major()
-      x = check_input_dim(x.placeholder, 1, self.input_data.dim)
+      input_data = self.input_data.copy_as_batch_feature_major()
+      x = check_input_dim(input_data.placeholder, 1, self.input_data.dim)
     else:
-      x = self.input_data.get_placeholder_as_batch_major()
-      x = check_input_dim(x, -1, self.input_data.dim)
+      input_data = self.input_data.copy_with_feature_dim_axis(-1)
+      x = check_input_dim(input_data.placeholder, -1, self.input_data.dim)
     data_format = None
-    if self.input_data.is_batch_feature_major:
+    if input_data.is_batch_feature_major:
       assert self.output.is_batch_feature_major
       data_format = {1: "NCW", 2: "NCHW", 3: "NCDHW"}[len(pool_size)]
     y = tf.nn.pool(
@@ -3062,9 +3062,9 @@ class PoolLayer(_ConcatInputLayer):
     # y shape is [batch] + spatial_dims + [n_out].
     self.output.placeholder = y
     self.output.size_placeholder = {
-      i: self.input_data.size_placeholder[i]
+      i: input_data.size_placeholder[i]
       for i in range(len(pool_size))
-      if i in self.input_data.size_placeholder}
+      if i in input_data.size_placeholder}
     index_shift = self.output.time_dim_axis_excluding_batch
     for i in list(self.output.size_placeholder.keys()):
       self.output.size_placeholder[i] = ConvLayer.calc_out_dim(
