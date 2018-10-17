@@ -143,6 +143,26 @@ def test_Data_unknown_feature_no_time():
   assert d1.batch_shape == (None, None)
 
 
+def test_Data_copy_with_feature_dim_axis():
+  import numpy as np
+  size_placeholder = tf.constant(np.full((10,), 10), dtype=tf.int32)
+  d = Data(name='test_data', shape=(None, 64, 64), dtype='float32',
+           size_placeholder={0: size_placeholder}, batch_dim_axis=0,
+           time_dim_axis=1, feature_dim_axis=3)
+  d_copy = d.copy_with_feature_dim_axis(1)
+  assert d_copy.shape == (64, None, 64)
+  assert d_copy.batch_dim_axis == 0
+  assert d_copy.time_dim_axis == 2
+  assert d_copy.feature_dim_axis == 1
+  assert d_copy.size_placeholder.keys() == [1]
+  d_copy = d_copy.copy_with_feature_dim_axis(-1)
+  assert d_copy.shape == (None, 64, 64)
+  assert d_copy.batch_dim_axis == 0
+  assert d_copy.time_dim_axis == 1
+  assert d_copy.feature_dim_axis == 3
+  assert d_copy.size_placeholder.keys() == [0]
+
+
 def test_Data_copy_compatible_to_time_major():
   d1 = Data(name='ff_out_output', shape=(None, 9001), dtype='float32', batch_dim_axis=1)
   d2 = Data(name='ff_out_prior_output', shape=(9001,), dtype='float32', batch_dim_axis=None, time_dim_axis=None)
