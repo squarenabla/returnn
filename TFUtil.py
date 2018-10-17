@@ -2715,21 +2715,23 @@ def flatten_with_seq_len_mask(x, seq_lens, batch_dim_axis=None, time_dim_axis=No
   # time_major is set(old_variant) => batch_dim_axis and time_dim_axis have to be None
   if time_major is not None:
     assert batch_dim_axis is None and time_dim_axis is None
-    batch_dim_axis = int(time_major)
-    time_dim_axis = int(not time_major)
+    if time_major:
+      batch_dim_axis, time_dim_axis = 1, 0
+    else:
+      batch_dim_axis, time_dim_axis = 0, 1
   with tf.name_scope("flatten_with_seq_len_mask"):
     seq_lens = check_input_ndim(seq_lens, 1)
-    if time_dim_axis == 0 or time_major:
-      x = swapaxes(x, time_dim_axis, batch_dim_axis)  # get (batch,time,...s...)
-      time_dim_axis, batch_dim_axis = batch_dim_axis, time_dim_axis
+    # If not (batch,time,...s...), transform.
+    if batch_dim_axis != 0 or time_dim_axis != 1:
+      assert batch_dim_axis is not None and time_dim_axis is not None
+      dyn_axes = [batch_dim_axis, time_dim_axis]
+      perm = [i for i in dyn_axes] + [i for i in range(len(x.shape)) if i not in dyn_axes]
+      x = tf.transpose(x, perm=perm)
+      batch_dim_axis = 0
+      time_dim_axis = 1
     x = check_dim_equal(x, batch_dim_axis, seq_lens, batch_dim_axis, ["batch-dim does not match"])  # batch dim
     # int64? -> https://github.com/tensorflow/tensorflow/issues/6518
     # Batch and time dims have to be in front of the tensor in order to apply the mask.
-    dyn_axes = [batch_dim_axis, time_dim_axis]
-    perm = [i for i in dyn_axes] + [i for i in range(len(x.shape)) if i not in dyn_axes]
-    batch_dim_axis = 0
-    time_dim_axis = 1
-    x = tf.transpose(x, perm=perm)
     mask = sequence_mask(seq_lens, maxlen=tf.shape(x)[time_dim_axis])  # shape (batch,time)
     mask = check_input_ndim(mask, 2)
     mask = check_dim_equal(mask, 0, x, batch_dim_axis)
