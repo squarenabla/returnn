@@ -3022,7 +3022,6 @@ class PoolLayer(_ConcatInputLayer):
     :param tuple[int]|int dilation_rate:
     :param tuple[int]|int|None strides: in contrast to tf.nn.pool, the default (if it is None) will be set to pool_size
     :param bool auto_use_channel_first: if set, will transform input to NCHW format
-    :param bool auto_use_channel_first: convert the input to NCHW or not
     """
     assert "n_out" not in kwargs
     assert "out_type" not in kwargs
@@ -3079,8 +3078,6 @@ class PoolLayer(_ConcatInputLayer):
                              **kwargs):
     # y shape is [batch] + spatial_dims + [n_out].
     data = get_concat_sources_data_template(sources, name="%s_output" % name)
-    auto_use_channel_first = auto_use_channel_first or data.is_batch_feature_major
-    # The output format is the same as the input. We maybe change to channel-first below.
     shape = [None] * len(pool_size) + [data.dim]
     if strides is None:
       strides = pool_size
