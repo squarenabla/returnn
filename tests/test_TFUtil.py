@@ -163,6 +163,44 @@ def test_Data_copy_with_feature_dim_axis():
   assert d_copy.size_placeholder.keys() == [0]
 
 
+def test_Data_get_placeholder_flattened():
+  import numpy as np
+  print("Test1")
+  size_placeholder = tf.constant(np.full((7,), 9), dtype=tf.int32)
+  d = Data(name='test_data', shape=(None, 13, 17), dtype='float32',
+           size_placeholder={0: size_placeholder}, batch_dim_axis=0,
+           time_dim_axis=1, feature_dim_axis=3)
+  placeholder = tf.placeholder(shape=(None, None, 13, 17), dtype=tf.float32)
+  d.placeholder = placeholder
+  feed_data = np.random.rand(7, 9, 13, 17)
+  res = session.run(d.placeholder, feed_dict={placeholder: feed_data})
+  print(res.shape)
+  flat_placeholder = d.get_placeholder_flattened(keep_dims=True)
+  res = session.run(flat_placeholder, feed_dict={placeholder: feed_data})
+  print(res.shape)
+  assert res.shape[0] == 7 * 9 * 13
+  assert len(res.shape) == 4
+  flat_placeholder = d.get_placeholder_flattened(keep_dims=False)
+  res = session.run(flat_placeholder, feed_dict={placeholder: feed_data})
+  print(res.shape)
+  assert res.shape[0] == 7 * 9 * 13
+  assert len(res.shape) == 2
+  print("Test2")
+  d = Data(name='test_data', shape=(17,), dtype='float32',
+           batch_dim_axis=0, feature_dim_axis=1)
+  placeholder = tf.placeholder(shape=(None, 17), dtype=tf.float32)
+  d.placeholder = placeholder
+  feed_data = np.random.rand(7, 17)
+  res = session.run(d.placeholder, feed_dict={placeholder: feed_data})
+  print(res.shape)
+  flat_placeholder = d.get_placeholder_flattened(keep_dims=True)
+  res = session.run(flat_placeholder, feed_dict={placeholder: feed_data})
+  assert res.shape == (7, 17)
+  flat_placeholder = d.get_placeholder_flattened(keep_dims=False)
+  res = session.run(flat_placeholder, feed_dict={placeholder: feed_data})
+  assert res.shape == (7, 17)
+
+
 def test_Data_copy_compatible_to_time_major():
   d1 = Data(name='ff_out_output', shape=(None, 9001), dtype='float32', batch_dim_axis=1)
   d2 = Data(name='ff_out_prior_output', shape=(9001,), dtype='float32', batch_dim_axis=None, time_dim_axis=None)
