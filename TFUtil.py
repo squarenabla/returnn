@@ -396,35 +396,20 @@ class Data(object):
     old_feature_axis = data.feature_dim_axis
     data.feature_dim_axis = feature_dim_axis
     for k, a in other_special_axes.items():
-      if a == feature_dim_axis:
-        if a < old_feature_axis:
-          a += 1
-        else:
-          a -= 1
-      elif a > feature_dim_axis:
-        if a < old_feature_axis:
-          a += 1
-      else:
-        if a > old_feature_axis:
-          a -= 1
+      if old_feature_axis <= a < feature_dim_axis:
+        a -= 1
+      elif feature_dim_axis <= a < old_feature_axis:
+        a += 1
       setattr(data, k, a)
     axis_old_wo_batch = self.get_batch_axis_excluding_batch(self.feature_dim_axis)
     axis_new_wo_batch = data.get_batch_axis_excluding_batch(feature_dim_axis)
     if self.size_placeholder:
       new_size_placeholder = {}
       for i, s in self.size_placeholder.items():
-        if i == axis_new_wo_batch:
-          if i < axis_old_wo_batch:
-            i += 1
-          else:
-            i -= 1
-        elif i > axis_new_wo_batch:
-          if i < axis_old_wo_batch:
-            i += 1
-        else:  # i < axis_new_wo_batch
-          if i > axis_old_wo_batch:
-            assert i > 0
-            i -= 1
+        if axis_old_wo_batch <= i < axis_new_wo_batch:
+          i -= 1
+        elif axis_new_wo_batch <= i < axis_old_wo_batch:
+          i += 1
         new_size_placeholder[i] = s
       data.size_placeholder = new_size_placeholder
     data.sanity_check()
@@ -938,7 +923,8 @@ class Data(object):
     """
     assert self.placeholder is not None
     x = self.placeholder
-    dyn_axes = self.get_spatial_batch_axes() + [self.batch_dim_axis]
+    orig_dyn_axes = self.get_spatial_batch_axes() + [self.batch_dim_axis]
+    dyn_axes = list(orig_dyn_axes)
     if dyn_axes == [self.batch_dim_axis]:
       return x
     assert 0 in dyn_axes, "would need some transpose, not supported at the moment"
@@ -953,7 +939,6 @@ class Data(object):
                   for i in dyn_axes]
       ndim -= 1
     if len(dyn_axes) > 1:
-      # Transpose x to get dyn axes first
       shape = tf.shape(x)
       x = tf.reshape(
         x,
@@ -962,9 +947,10 @@ class Data(object):
       dyn_axes = [0]
     assert dyn_axes == [0]
     if keep_dims and orig_num_dyn_axes >= 2:
-      for i in self.get_spatial_batch_axes() + [self.batch_dim_axis]:
-        if i != 0:
+      for i in orig_dyn_axes:
+        if i not in dyn_axes:
           x = tf.expand_dims(x, axis=i)
+      x.set_shape([None] * self.batch_ndim)
     return x
 
   def get_axes(self, exclude_time=False, exclude_batch=False):
@@ -2713,12 +2699,14 @@ def flatten_with_seq_len_mask(x, seq_lens, batch_dim_axis=None, time_dim_axis=No
   :rtype: tf.Tensor
   """
   # time_major is set(old_variant) => batch_dim_axis and time_dim_axis have to be None
+  assert (batch_dim_axis is None and time_dim_axis is None) or time_major is None
+  assert (batch_dim_axis is not None and time_dim_axis is not None) or time_major is not None
   if time_major is not None:
-    assert batch_dim_axis is None and time_dim_axis is None
     if time_major:
       batch_dim_axis, time_dim_axis = 1, 0
     else:
       batch_dim_axis, time_dim_axis = 0, 1
+  assert batch_dim_axis != time_dim_axis
   with tf.name_scope("flatten_with_seq_len_mask"):
     seq_lens = check_input_ndim(seq_lens, 1)
     # If not (batch,time,...s...), transform.
